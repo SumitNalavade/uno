@@ -20,20 +20,18 @@ const Controller: React.FC = () => {
     const [gameId] = useState(uuid());
     const [players, setPlayers] = useState<string[]>([]);
     const [currentCard, setCurrentCard] = useState<UnoCard>(generateRandomCard());
-    const [turnIndex, setTurnIndex] = useState(0); // Index to track whose turn it is
-    const [broadcastChannel, setBroadcastChannel] = useState(() => new BroadcastChannel(gameId));
-
+    const [turnIndex, setTurnIndex] = useState(0);
+    const [broadcastChannel] = useState(() => new BroadcastChannel(gameId));
     const navigate = useNavigate();
 
     const startGame = () => {
         const newCard = generateRandomCard();
         setCurrentCard(newCard);
-
         setTurnIndex(0);
 
         broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: newCard });
-        broadcastChannel.postMessage({ type: "TURN_UPDATE", currentPlayer: players[turnIndex] });
-    }
+        broadcastChannel.postMessage({ type: "TURN_UPDATE", currentPlayer: players[0] });
+    };
 
     const nextTurn = useCallback(() => {
         const nextIndex = (turnIndex + 1) % players.length;
@@ -43,60 +41,49 @@ const Controller: React.FC = () => {
 
     useEffect(() => {
         const handlePlayerMove = (evt: MessageEvent) => {
-            if (evt.data.type === "PLAYER_JOIN") {
-                const playerId = evt.data.playerId;
+            const { type, playerId, card } = evt.data;
 
-                setPlayers((prevPlayers) => {
-                    if (!prevPlayers.includes(playerId)) {
-                        return [...prevPlayers, playerId];
-                    }
-                    return prevPlayers;
-                });
-            }
+            switch (type) {
+                case "PLAYER_JOIN":
+                    setPlayers((prevPlayers) => [...new Set([...prevPlayers, playerId])]);
+                    break;
 
-            if (evt.data.type === "PLAYER_MOVE") {
-                const { playerId, card } = evt.data;
-
-                // Check if it is the player's turn
-                if (players[turnIndex] === playerId) {
-                    // Validate card against current card (simplified for this example)
-                    if (card.color === currentCard.color || card.number === currentCard.number) {
-                        setCurrentCard(card);
-                        broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: card });
-                        nextTurn(); // Move to the next player's turn
+                case "PLAYER_MOVE":
+                    if (players[turnIndex] === playerId) {
+                        if (card.color === currentCard.color || card.number === currentCard.number) {
+                            setCurrentCard(card);
+                            broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: card });
+                            nextTurn();
+                        } else {
+                            broadcastChannel.postMessage({ type: "INVALID_MOVE", playerId });
+                        }
                     } else {
-                        // Invalid move message
-                        broadcastChannel.postMessage({ type: "INVALID_MOVE", playerId });
+                        broadcastChannel.postMessage({ type: "OUT_OF_TURN", playerId });
                     }
-                } else {
-                    // Player made a move out of turn message
-                    broadcastChannel.postMessage({ type: "OUT_OF_TURN", playerId });
-                }
-            }
+                    break;
 
-            if(evt.data.type === "PLAYER_DRAW") {
-                nextTurn(); // Move to the next player's turn
-            }
+                case "PLAYER_DRAW":
+                    nextTurn();
+                    break;
 
-            if(evt.data.type === "PLAYER_UNO") {
-                const playerId = evt.data.playerId
+                case "PLAYER_UNO":
+                    broadcastChannel.postMessage({ type: "PLAYER_MOVE", playerId });
+                    break;
 
-                broadcastChannel.postMessage({ type: "PLAYER_MOVE", playerId });
-            }
+                case "PLAYER_WON":
+                    broadcastChannel.postMessage({ type: "PLAYER_WON", playerId });
+                    broadcastChannel.close();
+                    navigate("/");
+                    break;
 
-            if(evt.data.type === "PLAYER_WON") {
-                const playerId = evt.data.playerId
-
-                broadcastChannel.postMessage({ type: "PLAYER_WON", playerId });
-
-                broadcastChannel.close();
-                navigate("/");
+                default:
+                    console.warn(`Unhandled message type: ${type}`);
             }
         };
 
         broadcastChannel.onmessage = handlePlayerMove;
 
-    }, [broadcastChannel, gameId, players, turnIndex, currentCard, nextTurn, navigate]);
+    }, [broadcastChannel, players, turnIndex, currentCard, nextTurn, navigate]);
 
     return (
         <div>
@@ -109,7 +96,6 @@ const Controller: React.FC = () => {
                 ))}
             </div>
             <p>Current Card: {currentCard.color} {currentCard.number}</p>
-
             <button onClick={startGame}>Start Game</button>
         </div>
     );
