@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { v4 as  uuid } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {    
@@ -8,9 +7,7 @@ const Home: React.FC = () => {
     const [gameIdInput, setgameIdInput] = useState("");
     
     const handleCreateNewGame = () => {
-        const newGameId = uuid();
-
-        navigate(`/game/${newGameId}`);
+        navigate("/controller");
     }
 
     const handleJoinExistingGame = () => {
