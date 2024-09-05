@@ -1,43 +1,52 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 
-const Home: React.FC = () => {    
-    const navigate = useNavigate();
-    
-    const [gameIdInput, setgameIdInput] = useState("");
-    
-    const handleCreateNewGame = () => {
-        navigate("/controller");
+const Home: React.FC = () => {
+  const navigate = useNavigate();
+  const [gameIdInput, setGameIdInput] = useState("");
+
+  const handleCreateNewGame = () => {
+    navigate("/controller");
+  }
+
+  const handleJoinExistingGame = () => {
+    if (gameIdInput.trim()) {
+      navigate(`/game/${gameIdInput}`);
     }
+  }
 
-    const handleJoinExistingGame = () => {
-        navigate(`/game/${gameIdInput}`);
-    }
-
-    return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-6">
-        <h1 className="text-7xl font-bold mb-12">Uno Game</h1>
-        <div className="flex flex-col items-center gap-6">
-            <div className="flex flex-col items-center gap-6">
-                <input
-                    type="text"
-                    placeholder="Enter Game ID"
-                    value={gameIdInput}
-                    onChange={(evt) => setgameIdInput(evt.target.value)}
-                    className="px-6 py-3 text-lg border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <button
-                    className="px-8 py-4 text-2xl font-semibold text-white bg-green-500 rounded-lg shadow-lg hover:bg-green-600 transition"
-                    onClick={handleJoinExistingGame}
-                >
-                    Join Existing Game
-                </button>
-
-                <button className="text-blue-500 font-semibold" onClick={handleCreateNewGame}>Create a New Game</button>
-            </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+        <div className="p-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-center text-blue-800 mb-6">Uno Game</h1>
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Enter Game ID"
+              value={gameIdInput}
+              onChange={(evt) => setGameIdInput(evt.target.value)}
+              className="w-full px-4 py-2 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              className="w-full py-2 text-xl font-semibold bg-green-500 hover:bg-green-600 text-white rounded-md transition duration-300"
+              onClick={handleJoinExistingGame}
+            >
+              Join Existing Game
+            </button>
+          </div>
         </div>
+        <div className="bg-gray-100 p-4 text-center">
+          <button
+            className="text-blue-800 font-semibold text-lg hover:underline"
+            onClick={handleCreateNewGame}
+          >
+            Create a New Game
+          </button>
+        </div>
+      </div>
     </div>
-    )
+  )
 }
 
 export default Home;

@@ -29,9 +29,14 @@ const Controller: React.FC = () => {
         setCurrentCard(newCard);
         setTurnIndex(0);
 
+
         broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: newCard });
         broadcastChannel.postMessage({ type: "TURN_UPDATE", currentPlayer: players[0] });
     };
+
+    const openGame = () => {
+        window.open(`/game/${gameId}`, "_blank");
+    }
 
     const nextTurn = useCallback(() => {
         const nextIndex = (turnIndex + 1) % players.length;
@@ -86,17 +91,32 @@ const Controller: React.FC = () => {
     }, [broadcastChannel, players, turnIndex, currentCard, nextTurn, navigate]);
 
     return (
-        <div>
-            <h1>Controller</h1>
-            <p>Game ID: {gameId}</p>
-            <div>
-                <p>Players:</p>
-                {players.map((playerId, index) => (
-                    <p key={index}>{playerId}</p>
-                ))}
+        <div className="min-h-screen bg-gradient-to-b from-red-500 to-yellow-500 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                <div className="bg-blue-600 text-white p-4">
+                    <h1 className="text-2xl font-bold text-center">Uno Game Controller</h1>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="bg-gray-100 p-3 rounded-lg">
+                        <p className="text-sm text-gray-600">Game ID:</p>
+                        <p className="font-mono text-sm break-all">{gameId}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">Players:</span>
+                        <span className="text-xl font-bold">{players}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">Current Card:</span>
+                        <span className={`text-xl font-bold px-3 py-1 bg-${currentCard.color}-500 text-white rounded`}>{currentCard.color} {currentCard.number}</span>
+                    </div>
+                    <button className="w-full py-2 text-xl font-semibold bg-gray-500 hover:bg-gray-600 text-white rounded-md transition duration-300" onClick={openGame   }>
+                        Open Game
+                    </button>
+                    <button className="w-full py-2 text-xl font-semibold bg-green-500 hover:bg-green-600 text-white rounded-md transition duration-300" onClick={startGame}>
+                        Start Game
+                    </button>
+                </div>
             </div>
-            <p>Current Card: {currentCard.color} {currentCard.number}</p>
-            <button onClick={startGame}>Start Game</button>
         </div>
     );
 };
