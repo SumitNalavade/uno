@@ -22,6 +22,7 @@ const Game: React.FC = () => {
     const navigate = useNavigate();
     const { gameId } = useParams();
     const [playerId] = useState(uuid());
+    const [currentPlayer, setCurrentPlayer] = useState();
     const [broadcastChannel] = useState(() => new BroadcastChannel(gameId!));
     const [cards, setCards] = useState<UnoCard[]>([]);
     const [currentCard, setCurrentCard] = useState<UnoCard | null>(null);
@@ -41,6 +42,8 @@ const Game: React.FC = () => {
                     if (evt.data.currentPlayer === playerId) {
                         alert("Your Turn");
                     }
+
+                    setCurrentPlayer(evt.data.currentPlayer);
                     break;
                 case "PLAYER_UNO":
                     if (evt.data.playerId !== playerId) {
@@ -62,7 +65,13 @@ const Game: React.FC = () => {
 
     }, [broadcastChannel, gameId, playerId, navigate]);
 
-    const makeMove = (card: UnoCard) => {
+    const makeMove = (card: UnoCard) => {        
+        if(currentPlayer !== playerId) {
+            alert("Wait for your turn!");
+
+            return;
+        }
+        
         broadcastChannel.postMessage({ type: "PLAYER_MOVE", playerId, card });
 
         const updatedDeck = cards.filter(elm => elm !== card);
