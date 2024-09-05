@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
+import { useNavigate } from "react-router-dom";
 
 interface UnoCard {
     number: number;
@@ -20,8 +21,9 @@ const generateRandomCards = (count: number): UnoCard[] => {
     return Array.from({ length: count }, generateRandomCard);
 };
 
-
 const Game: React.FC = () => {
+    const navigate = useNavigate();
+    
     const { gameId } = useParams();
     const [playerId, setPlayerId] = useState(uuid());
     const [broadcastChannel, setBroadcastChannel] = useState(new BroadcastChannel(gameId!));
@@ -40,10 +42,56 @@ const Game: React.FC = () => {
             if (evt.data.type === "CURRENT_CARD") {
                 setCurrentCard(evt.data.currentCard);
             }
+
+            if(evt.data.type === "TURN_UPDATE") {
+                if(evt.data.currentPlayer === playerId) {
+                    alert("Your Turn");
+                }
+            }
+
+            if(evt.data.type === "PLAYER_UNO") {
+                if(evt.data.playerId !== playerId) {
+                    const player = evt.data.playerId;
+
+                    alert(`Player ${player} has uno!`)
+                }
+            }
+
+            if(evt.data.type === "PLAYER_WON") {
+                if(evt.data.playerId !== playerId) {
+                    const player = evt.data.playerId;
+
+                    alert(`Player ${player} has won!`)
+                    navigate("/");
+                }
+            }
         };
     }, [gameId, playerId, broadcastChannel])
 
-    console.log(currentCard);
+    const makeMove = (card: UnoCard) => {
+        broadcastChannel.postMessage({ type: "PLAYER_MOVE", playerId, card });
+
+        const updatedDeck = cards.filter(elm => elm !== card);
+        setCards(updatedDeck);
+
+        if(updatedDeck.length === 1) {
+            broadcastChannel.postMessage({ type: "PLAYER_UNO", playerId });
+        }
+
+        if(updatedDeck.length === 0) {
+            broadcastChannel.postMessage({ type: "PLAYER_WON", playerId });
+
+            alert("You win!!");
+            navigate('/');
+        }
+    };
+
+    const drawCard = () => {
+        const newCard = generateRandomCard();
+        setCards((prevCards) => [...prevCards, newCard]);
+
+        broadcastChannel.postMessage({ type: "PLAYER_DRAW" });
+    };
 
     return (
         <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-6">
@@ -61,15 +109,22 @@ const Game: React.FC = () => {
             )}
             <div className="grid grid-cols-3 gap-4">
                 {cards.map((card, index) => (
-                    <div
+                    <button
                         key={index}
+                        onClick={() => makeMove(card)}
                         className={`w-24 h-36 rounded-lg flex items-center justify-center text-white font-bold text-2xl`}
                         style={{ backgroundColor: card.color }}
                     >
                         {card.number}
-                    </div>
+                    </button>
                 ))}
             </div>
+            <button
+                onClick={drawCard}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold"
+            >
+                Draw Card
+            </button>
         </div>
     )
 }
