@@ -2,34 +2,39 @@ import React, { useCallback, useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { useNavigate } from 'react-router-dom';
 
-interface UnoCard {
-    number: number;
-    color: string;
-}
+import { UnoCard } from "./interfaces";
+import { generateRandomCard } from "./utils";
 
-const colors = ["red", "blue", "green", "yellow"];
-const numbers = Array.from({ length: 10 }, (_, index) => index); // 0 through 9
-
-const generateRandomCard = (): UnoCard => {
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
-    return { number: randomNumber, color: randomColor };
-};
-
+/*
+Controller component will manage data shared between all players
+    - Initialize and start the game
+    - Maintain players
+    - Manage the current card and which players turn it currently is
+    
+    - Enforces rules of the game
+    - Broadcasts alerts for winners and uno
+*/
 const Controller: React.FC = () => {
-    const [gameId] = useState(uuid());
-    const [players, setPlayers] = useState<string[]>([]);
-    const [currentCard, setCurrentCard] = useState<UnoCard>(generateRandomCard());
-    const [turnIndex, setTurnIndex] = useState(0);
-    const [broadcastChannel] = useState(() => new BroadcastChannel(gameId));
     const navigate = useNavigate();
 
+    const [gameId] = useState(uuid());
+    const [players, setPlayers] = useState<string[]>([]);
+
+    const [currentCard, setCurrentCard] = useState<UnoCard>(generateRandomCard());
+    const [turnIndex, setTurnIndex] = useState(0);
+
+    // Create the brodcast channel that is accessed by all players
+    const [broadcastChannel] = useState(() => new BroadcastChannel(gameId));
+
     const startGame = () => {
+        // Draw a random card to be the first card that is played
         const newCard = generateRandomCard();
         setCurrentCard(newCard);
+        
+        // Player1 will be the first to go
         setTurnIndex(0);
 
-
+        // Broadcast to clients to update their current card and their current player
         broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: newCard });
         broadcastChannel.postMessage({ type: "TURN_UPDATE", currentPlayer: players[0] });
     };
@@ -38,12 +43,16 @@ const Controller: React.FC = () => {
         window.open(`/game/${gameId}`, "_blank");
     }
 
+    // After a player broadcasts their turn, update the nextTurn state in the controller, then broadcast the current player to all clients
     const nextTurn = useCallback(() => {
         const nextIndex = (turnIndex + 1) % players.length;
         setTurnIndex(nextIndex);
+
         broadcastChannel.postMessage({ type: "TURN_UPDATE", currentPlayer: players[nextIndex] });
+
     }, [turnIndex, players, broadcastChannel]);
 
+    // Listen for incoming message from the BroadcastChannel API
     useEffect(() => {
         const handlePlayerMove = (evt: MessageEvent) => {
             const { type, playerId, card } = evt.data;
@@ -57,7 +66,9 @@ const Controller: React.FC = () => {
                     if (players[turnIndex] === playerId) {
                         if (card.color === currentCard.color || card.number === currentCard.number) {
                             setCurrentCard(card);
+
                             broadcastChannel.postMessage({ type: "CURRENT_CARD", currentCard: card });
+                            
                             nextTurn();
                         } else {
                             broadcastChannel.postMessage({ type: "INVALID_MOVE", playerId });

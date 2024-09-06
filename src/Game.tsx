@@ -2,35 +2,32 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 
-interface UnoCard {
-    number: number;
-    color: string;
-}
-
-const colors = ["red", "blue", "green", "yellow"];
-const numbers = Array.from({ length: 10 }, (_, index) => index);
-
-const generateRandomCard = (): UnoCard => ({
-    number: numbers[Math.floor(Math.random() * numbers.length)],
-    color: colors[Math.floor(Math.random() * colors.length)],
-});
-
-const generateRandomCards = (count: number): UnoCard[] =>
-    Array.from({ length: count }, generateRandomCard);
+import { UnoCard } from "./interfaces";
+import { generateRandomCard, generateRandomCards } from "./utils";
 
 const Game: React.FC = () => {
     const navigate = useNavigate();
     const { gameId } = useParams();
+
     const [playerId] = useState(uuid());
     const [currentPlayer, setCurrentPlayer] = useState<string | null>(null);
+    
+    // Access the broadcast channel corresponding to the current game via the gameid
     const [broadcastChannel] = useState(() => new BroadcastChannel(gameId!));
+    
+    // Mainain a deck of cards for the player
     const [cards, setCards] = useState<UnoCard[]>([]);
+
+    // Keep track of the current game card from the controller
     const [currentCard, setCurrentCard] = useState<UnoCard | null>(null);
 
+    // Listen for incoming messages from the controller via the BroadcastChannel API
     useEffect(() => {
         if (!gameId) return;
 
         broadcastChannel.postMessage({ type: "PLAYER_JOIN", playerId });
+        
+        // Generate a deck of 7 random cards when the game starts
         setCards(generateRandomCards(7));
 
         const handleMessage = (evt: MessageEvent) => {
@@ -60,6 +57,8 @@ const Game: React.FC = () => {
         broadcastChannel.onmessage = handleMessage;
     }, [broadcastChannel, gameId, playerId, navigate]);
 
+    // When a player plays a card, broadcast it to the controller to update the game card
+    // Remove the played card from the players deck
     const makeMove = (card: UnoCard) => {
         if (currentPlayer !== playerId) return;
 
@@ -68,6 +67,7 @@ const Game: React.FC = () => {
         const updatedDeck = cards.filter(elm => elm !== card);
         setCards(updatedDeck);
 
+        // Check to see if we have a uno or a winner
         if (updatedDeck.length === 1) {
             broadcastChannel.postMessage({ type: "PLAYER_UNO", playerId });
         }
@@ -78,6 +78,7 @@ const Game: React.FC = () => {
         }
     };
 
+    // Randomly 'draw' a new card and add it to the player's deck
     const drawCard = () => {
         if (currentPlayer !== playerId) return;
 
@@ -86,6 +87,7 @@ const Game: React.FC = () => {
         broadcastChannel.postMessage({ type: "PLAYER_DRAW" });
     };
 
+    // Convert text colors to HEX colors
     const getCardColor = (color: string) => {
         const colorMap: { [key: string]: string } = {
             red: "#FF5555",
@@ -141,7 +143,7 @@ const Game: React.FC = () => {
                 </button>
             </div>
         </div>
-    );  
+    );
 };
 
 export default Game;
